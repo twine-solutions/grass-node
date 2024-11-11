@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         .build()
         .unwrap();
 
-    let file = File::open(args.proxies).await.context("Failed to open proxies file")?;
+    let file = File::open(args.proxies).await.context("Failed to open proxies file.")?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
 
