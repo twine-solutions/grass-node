@@ -2,7 +2,7 @@
 > This project is sponsered by [proxies.fo](https://proxies.fo/), check them out for the best proxies on the market.
 
 # Grass Node
-Automate [Grass](https://getgrass.io/) Desktop Node with [proxies](https://proxies.fo).
+Automate [Grass](https://app.getgrass.io/register/?referralCode=lMkQrD6ZBklr-Dv) Desktop Node with [proxies](https://proxies.fo).
 
 ## Features
 - Identified as Desktop Node (2X points).
@@ -10,7 +10,7 @@ Automate [Grass](https://getgrass.io/) Desktop Node with [proxies](https://proxi
 - Blazing fast (We ❤ Rust).
 
 ## Setup
-1. Visit [Grass](https://getgrass.io/) and register an account.
+1. Visit [Grass](https://app.getgrass.io/register/?referralCode=lMkQrD6ZBklr-Dv) and register an account.
 2. Press F12 on the Dashboard page and go to the Console tab.
 3. Paste the following script into the console and copy the value.
     ```js 
