@@ -1,3 +1,5 @@
-socks5h://username:password@ip:port
-socks5://username:password@ip:port
-http://username:password@ip:port
+http://user:pass@ip:port
+http://repeat:this@ip:port
+http://until:desired@ip:port
+http://amount:of@ip:port
+http://threads:yay@ip:port

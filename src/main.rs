@@ -67,7 +67,7 @@ async fn worker(num: i32, user_id: String, proxy: String) {
 
         match grass.connect().await {
             Ok(_) => {},
-            Err(e) => log::error!(target: &log_target, "Connection error: {}", e)
+            Err(e) => log::error!(target: &log_target, "Connection error: {:?}", e)
         }
     }
 }

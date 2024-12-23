@@ -1,4 +1,8 @@
 use anyhow::{Result, Context};
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
+use random_string::generate as random_string;
+
 use tokio::time::{interval, Duration};
 use tokio::task::JoinHandle;
 use tokio::sync::mpsc;
@@ -11,7 +15,7 @@ use futures_util::{StreamExt, SinkExt};
 use serde_json::Value;
 use uuid::Uuid;
 
-const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 pub struct Grass {
     client: Client,
@@ -49,7 +53,7 @@ impl Grass {
 
     fn start_ping_task(&mut self, tx: mpsc::Sender<Message>) {
         let ping_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(110));
+            let mut interval = interval(Duration::from_secs(2 * 60));
 
             loop {
                 interval.tick().await;
@@ -126,13 +130,41 @@ impl Grass {
         Ok(())
     }
 
+    async fn handle_request(&mut self, id: &str, url: &str) -> Result<String> {
+        let response = self.client.get(url)
+            .header("Accept", "*/*")
+            .header("Host", "api.getgrass.io")
+            .header("User-Agent", "wynd.network/3.0.1")
+            .send()
+            .await?;
+
+        let response_headers = response.headers().clone();
+        let headers = response_headers.iter()
+            .map(|(name, value)| (name.as_str(), value.to_str().unwrap()))
+            .collect::<Vec<_>>();
+
+        let response_text = response.text().await?;
+        let base64_response = BASE64_STANDARD.encode(&response_text);
+
+        let request_response = serde_json::json!({
+            "id": id,
+            "origin_action": "HTTP_REQUEST",
+            "data": serde_json::json!({
+                "url": url,
+                "status": 200,
+                "status_text": "",
+                "headers": headers,
+                "body": base64_response,
+            })
+        }).to_string();
+        Ok(request_response)
+    }
+
     async fn handle_message(&mut self, message: String) -> Result<()> {
         let json: Value = serde_json::from_str(&message)
             .context("Failed to parse WebSocket message as JSON")?;
         let action = json["action"].as_str().context("Missing action field")?;
         let message_id = json["id"].as_str().context("Missing id field")?;
-
-        log::info!(target: &self.log_target, "Received message: {}", message);
 
         match action {
             "PONG" => {
@@ -166,6 +198,40 @@ impl Grass {
                 if let Some(tx) = &self.tx {
                     tx.send(auth_message).await?;
                     log::info!(target: &self.log_target, "Authenticated as user_id: {}", self.user_id);
+                }
+            }
+            "HTTP_REQUEST" => {
+                let url = json["data"]["url"].as_str().context("Missing url field")?;
+                let method = json["data"]["method"].as_str().context("Missing method field")?;
+
+                log::info!(target: &self.log_target, "Received HTTP request: {} {}", method, url);
+                if url.contains("https://api.getgrass.io/") {
+                    log::info!(target: &self.log_target, "Handling bot-check request.");
+
+                    let bot_response = self.handle_request(message_id, url).await;
+                    let bot_message = Message::Text(bot_response?);
+
+                    if let Some(tx) = &self.tx {
+                        tx.send(bot_message).await?;
+                    }
+                } else {
+                    log::info!(target: &self.log_target, "Forging request response.");
+
+                    let request_response = serde_json::json!({
+                        "id": message_id,
+                        "origin_action": "HTTP_REQUEST",
+                        "data": serde_json::json!({
+                            "url": url,
+                            "status": 200,
+                            "status_text": "",
+                            "headers": [],
+                            "body": random_string(16, "hahafunnylolxd"),
+                        })
+                    }).to_string();
+
+                    if let Some(tx) = &self.tx {
+                        tx.send(Message::Text(request_response)).await?;
+                    }
                 }
             }
             _ => {
